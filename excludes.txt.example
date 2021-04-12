@@ -1,0 +1,9 @@
+**/node_modules
+*.o
+*.pyc
+aaa*
+bbb*
+ccc*
+ddd*
+*.pid
+

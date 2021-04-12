@@ -1,0 +1,48 @@
+---
+
+# Two alternative methods to provide a password to restic.
+# 1. explicitly:
+restic_password: YOURPASSWORD
+# 2. by delegating to an external yml file (I have one for all my external disks)
+passfile: /keybase/private/multiscan/ext_disc_pass.yml
+passkey: restic
+
+
+host: GiovaLaptop
+# Volumes are the list of disk partitions that can be used to store the backup
+# symbolic_name: UUID 
+# UUID can be obtained by digging into the output of one of the following commands
+# diskutil list -plist external | plutil -convert xml1 -o -
+# diskutil list -plist external | plutil -convert json -o - | jq
+# volumes are referenced in the repos section by their symbolic name
+volumes:
+  uno: 0142FD6F-7AE2-4DE3-875E-A2FFE1A9EEC1 
+
+# Repos are the backup sets. Each repo is a separate and independent restic backup.
+repos:
+  home_hourly:              # repo symbolic name. A directory with this name
+                            # will be created in the root of the volume in
+                            # order to store the backup
+    volume: uno             # the name of the volume to use
+    freq: hourly            # Backup frequency (hourly|daily|weekly|monthly)
+    base: /Users/cangiani   # Base path. Dirs to backup are relative to this
+    dirs:                   # List of directories to backup
+      - Projects/VPSI
+      - Projects/Giova
+
+  home_daily:
+    volume: uno
+    freq: daily
+    base: /Users/cangiani 
+    dirs:
+      - Documents 
+      - Appunti
+      - Install
+      - bin 
+  priv:
+    volume: uno
+    freq: daily
+    base: /Volumes/Priv
+    dirs:
+      - Projects
+      - Documents

@@ -1,0 +1,5 @@
+.lastrun.marshal
+*.lock
+backups.yml
+excludes.txt
+log
