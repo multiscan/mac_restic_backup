@@ -315,6 +315,7 @@ when "backup"
 	volumes.each_value {|v| v.mount }
 	repos.each {|r| r.backup(cfg['host'], args)}
 	volumes.each_value {|v| v.umount }
+	puts "Done backup"
 when "list"
 	puts "\nConfigured Volumes:"
 	volumes.each do |k,v|
