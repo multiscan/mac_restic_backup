@@ -1,11 +1,13 @@
 #!/bin/sh
-prg="$(greadlink -f $0)"
-casa=$(dirname $(greadlink -f $0))
+prg="$(/usr/local/bin/greadlink -f $0)"
+casa=$(dirname $(/usr/local/bin/greadlink -f $0))
 lof="$casa/log"
 
-name="restic.backup"
+name="giova.restic.backup"
 laconf="$HOME/Library/LaunchAgents/$name.plist"
 interval=3600
+
+date >> $lof
 
 usage() {
   cat <<-__EOF
@@ -36,7 +38,7 @@ start() {
         <string>$name</string>
         <key>ProgramArguments</key>
         <array>
-          <string>sh</string>
+          <string>/usr/local/bin/bash</string>
           <string>-c</string>
           <string>$prg</string>
         </array>
@@ -73,11 +75,11 @@ restart() {
 }
 
 run() {
-  ruby $casa/restic.rb backup >> $lof
+  /usr/bin/ruby $casa/restic.rb backup >> $lof
 }
 
 list() {
-  ruby $casa/restic.rb list
+  /usr/bin/ruby $casa/restic.rb list
   echo "For more options, please run the ruby script directly"
   echo "Example: ruby restic.rb list -v"
 }
