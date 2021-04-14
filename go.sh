@@ -1,13 +1,11 @@
 #!/bin/sh
 prg="$(/usr/local/bin/greadlink -f $0)"
 casa=$(dirname $(/usr/local/bin/greadlink -f $0))
-lof="$casa/log"
+export LOGFILE="$casa/log"
 
 name="giova.restic.backup"
 laconf="$HOME/Library/LaunchAgents/$name.plist"
 interval=3600
-
-date >> $lof
 
 usage() {
   cat <<-__EOF
@@ -48,13 +46,12 @@ start() {
       </plist>    
 ____EOF
   fi
-  rm -f $lof
-  echo "Registering $name service" | tee -a $lof
+  echo "Registering $name service"
   launchctl list | grep -q "$name"  || launchctl load -w $laconf
 }
 
 stop() {
-  echo "Unregistering $name service" | tee -a $lof
+  echo "Unregistering $name service"
   launchctl remove $name
   rm -f $laconf  
 }
@@ -75,13 +72,16 @@ restart() {
 }
 
 run() {
-  /usr/bin/ruby $casa/restic.rb backup >> $lof
+  /usr/bin/ruby $casa/restic.rb -v -v backup
 }
 
 list() {
   /usr/bin/ruby $casa/restic.rb list
-  echo "For more options, please run the ruby script directly"
-  echo "Example: ruby restic.rb list -v"
+  echo "For infos about snapshots, please use the 'inspect' command"
+}
+
+inspect() {
+  /usr/bin/ruby $casa/restic.rb inspect
 }
 
 cmd="run"
@@ -96,7 +96,7 @@ case $1 in
   shift 1
   exit
   ;;
-start|stop|restart|status|run|list)
+start|stop|restart|status|run|list|inspect)
   cmd=$1
   shift 1
   ;;

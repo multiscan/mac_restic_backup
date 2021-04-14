@@ -3,12 +3,33 @@
 # Restic backup wrapper
 #
 require 'fileutils'
+require 'logger'
 require 'optparse'
 require 'yaml'
 
 RUNDIR=__dir__
 CONFDIR=__dir__
 RESTIC="/usr/local/bin/restic"
+
+
+class GLogger
+  def self.log
+	if @logger.nil?
+		if ENV['LOGFILE']
+			@logger = Logger.new(ENV['LOGFILE'], 'monthly')
+		else
+			@logger = Logger.new(STDERR)
+		end
+		@logger.level = Logger::WARN
+	    @logger.datetime_format = '%Y-%m-%d %H:%M:%S '
+    end
+    @logger
+  end
+end
+
+def logger
+	GLogger.log
+end
 
 class Volume
 	attr_reader :uuid, :path, :state
@@ -195,30 +216,30 @@ class Repo
 		"#{@freq}\n" << @dirs.map{|d| "- #{@base}/#{d}"}.join("\n")
 	end
 
-	def backup(host, opts={verbose: 0})
-		return true if self.duedirs.empty?
+	def backup(host)
+		dd=self.duedirs
+		logger.debug "Backup #{@name}: #{dd.count}/#{@dirs.count} due directories"
+		return true if dd.empty?
 		# Restic do locks the repo but I want the lock to be volume-wide so 
 		# no two backups are running on the same volume (USB external disk).
 		return false unless @volume.mount
 		return false unless @volume.lock
 
+		logger.debug "Backup #{@name}: volume ok"
+
 		restic="#{RESTIC} --repo #{@volume.path}/#{@name}"
 		ef="#{CONFDIR}/excludes.txt"
 		excl = File.exists?(ef) ? "--exclude-file=#{ef}" : ""
-		self.duedirs.each do |d|
+		dd.each do |d|
 			p = "#{@base}/#{d}"
 			ef= "#{p}/.excludes"
 			eexcl = File.exists?(ef) ? "--exclude-file=#{ef}" : ""
 			r = system "#{restic} backup --host=#{host} #{excl} #{eexcl} #{p}"
 			@@last.touch(@name, d) if r
-			if opts[:verbose] > 0
-				puts "Backup of #{p} into #{@name}. #{r ? 'Done.' : 'Error!'}"
-			end
+			logger.info "Backup of #{p} into #{@name}. #{r ? 'Done.' : 'Error!'}" 
 		end
 		r = system "#{restic} forget --prune #{@keep}"
-		if  opts[:verbose] > 0
-			puts "Cleaning of #{@name}. #{r ? 'Done.' : 'Error!'}"
-		end
+		logger.info "Cleaning of #{@name}. #{r ? 'Done.' : 'Error!'}"
 		@volume.unlock
 		@volume.umount
 	end
@@ -245,7 +266,17 @@ args = {
 }
 
 OptionParser.new do |opts|
-  opts.banner = "restic.rb [options] command ... "
+  opts.banner = """
+  	Usage:
+  	restic.rb [options] command ... 
+    -
+  	Where command is one of:
+  	list    to see the configured volumes and repos
+  	inspect like list but with details about the restic snapshots
+  	backup  to perform the backup of due configured paths
+    -
+  	Options:
+  """.gsub(/^\s+/, '')
 
   opts.on("-v", "--verbose", "Increase verbosity level") do
     args[:verbose] = args[:verbose] + 1
@@ -274,6 +305,10 @@ end.parse!
 
 cmd=ARGV.first || "backup"
 
+args[:verbose].times do
+	logger.level = logger.level - 1 if logger.level > 0
+end
+
 # ------------------------------------------------------------------------------
 
 cfg=YAML.load_file args[:file]
@@ -300,22 +335,21 @@ cfg['repos'].each do |k,rd|
 	end
 end
 
-if args[:verbose]>1
-	puts "Volumes: #{volumes.inspect}"
-	puts "Repos:   #{repos.inspect}"
-	puts "Cmd:     #{cmd}"
-end
-# volumes.each_value {|v| v.mount }
-# repos.values.first.backup(cfg['host'])
-# volumes.each_value {|v| v.umount }
+logger.debug "Volumes: #{volumes.inspect}"
+logger.debug "Repos:   #{repos.inspect}"
+logger.debug "Cmd:     #{cmd}"
 
 case cmd
 when "backup"
-	puts "\nRunning backup"
+	allok=true
+	logger.info "Running backup"
 	volumes.each_value {|v| v.mount }
-	repos.each {|r| r.backup(cfg['host'], args)}
+	repos.each do |r| 
+		ok=r.backup(cfg['host'])
+		allok = allok && ok
+	end
 	volumes.each_value {|v| v.umount }
-	puts "Done backup"
+	logger.info  "Done backup #{allok ? 'without errors' : 'with some error'}"
 when "list"
 	puts "\nConfigured Volumes:"
 	volumes.each do |k,v|
@@ -323,20 +357,23 @@ when "list"
 	end
 
 	puts "\nConfigured backups:"
-	if args[:verbose] > 0
-		volumes.each_value {|v| v.mount }
-		repos.each do |r|
-			puts "\n  #{r.name}:"
-			puts r.snapshots.gsub(/^/, "    ").lines[2..-3].join()
-		end
-		volumes.each_value {|v| v.umount }
-    else
- 		repos.each do |r|
-			puts "  #{r.name}:"
-			puts r.to_s.gsub(/^/, "    ")
-		end
-		puts "\nRun with -v to see the snapshots"
+	repos.each do |r|
+		puts "  #{r.name}:"
+		puts r.to_s.gsub(/^/, "    ")
 	end
+when "inspect"
+	puts "\nConfigured Volumes:"
+	volumes.each do |k,v|
+		puts "  #{k}: #{v.to_s}"
+	end
+
+	puts "\nConfigured backups:"
+	volumes.each_value {|v| v.mount }
+	repos.each do |r|
+		puts "\n  #{r.name}:"
+		puts r.snapshots.gsub(/^/, "    ").lines[2..-3].join()
+	end
+	volumes.each_value {|v| v.umount }
 end
 if args[:umount]
 	volumes.each_value {|v| v.umount! }
