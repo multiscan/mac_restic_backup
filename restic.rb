@@ -9,8 +9,15 @@ require 'yaml'
 
 RUNDIR=__dir__
 CONFDIR=__dir__
+APPNAME="ResticBackup"
 RESTIC="/usr/local/bin/restic"
 
+def notify(msg)
+  cmd = "/usr/bin/osascript -e 'display notification \""
+  cmd << msg
+  cmd << "\" with title \"#{APPNAME}\"'"
+  system cmd
+end
 
 class GLogger
   def self.log
@@ -358,6 +365,9 @@ when "backup"
 	end
 	volumes.each_value {|v| v.umount }
 	logger.info  "Done backup #{allok ? 'without errors' : 'with some error'}"
+	if  args[:notify]
+		notify "Done backup #{allok ? 'without errors' : 'with some error'}"
+	end
 when "list"
 	puts "\nConfigured Volumes:"
 	volumes.each do |k,v|
