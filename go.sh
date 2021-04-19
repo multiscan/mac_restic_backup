@@ -73,7 +73,7 @@ restart() {
 
 run() {
   cd $casa
-  /usr/bin/ruby $casa/restic.rb -v -v backup
+  /usr/bin/ruby $casa/restic.rb -n -v -v backup
 }
 
 list() {

@@ -216,6 +216,10 @@ class Repo
 		"#{@freq}\n" << @dirs.map{|d| "- #{@base}/#{d}"}.join("\n")
 	end
 
+	def something_to_do?
+		!self.duedirs.empty?
+	end
+
 	def backup(host)
 		dd=self.duedirs
 		logger.debug "Backup #{@name}: #{dd.count}/#{@dirs.count} due directories"
@@ -341,6 +345,10 @@ logger.debug "Cmd:     #{cmd}"
 
 case cmd
 when "backup"
+	unless repos.any? { |r| r.something_to_do? }
+		logger.debug "Nothing to do yet."
+		exit
+	end
 	allok=true
 	logger.info "Running backup"
 	volumes.each_value {|v| v.mount }
