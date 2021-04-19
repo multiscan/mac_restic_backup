@@ -72,6 +72,7 @@ restart() {
 }
 
 run() {
+  cd $casa
   /usr/bin/ruby $casa/restic.rb -v -v backup
 }
 

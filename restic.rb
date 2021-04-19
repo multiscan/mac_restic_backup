@@ -81,7 +81,7 @@ class Volume
 	# diskutil list -plist external | plutil -convert json -o - - | jq '..|objects|select(.VolumeName == "wdeTM")' 
 	def set_state
 		jq="..|objects|.[\"APFSVolumes\"]|arrays|.[]|select(.VolumeUUID == \"#{@uuid}\")|.MountPoint"
-		r=`diskutil list -plist external | plutil -convert json -o - - | jq -r '#{jq}'`.chomp
+		r=`diskutil list -plist external | plutil -convert json -o - - | /usr/local/bin/jq -r '#{jq}'`.chomp
 		if r.empty?
 			@state = "unknown"
 			@path = nil
