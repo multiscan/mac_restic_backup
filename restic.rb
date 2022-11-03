@@ -204,7 +204,7 @@ class Repo
 		"yearly"  => 31556952
 	}
 
-	attr_reader :name, :base, :dirs
+	attr_reader :name, :volume, :base, :dirs
 	def initialize(h)
 		@name   = h['name']
 		@volume = h['volume']
@@ -388,8 +388,12 @@ when "inspect"
 	puts "\nConfigured backups:"
 	volumes.each_value {|v| v.mount }
 	repos.each do |r|
-		puts "\n  #{r.name}:"
-		puts r.snapshots.gsub(/^/, "    ").lines[2..-3].join()
+		if r.volume.mounted? 
+			puts "\n  #{r.name}:"
+			puts r.snapshots.gsub(/^/, "    ").lines[2..-3].join()
+		else
+			puts "\n  #{r.name}:\n    volume not mounted"
+		end
 	end
 	volumes.each_value {|v| v.umount }
 end
